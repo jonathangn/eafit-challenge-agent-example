@@ -1,4 +1,4 @@
-name: Deploy Example Agent
+name: Deploy Personal AIssistant
 
 on:
   workflow_dispatch:
@@ -14,8 +14,8 @@ on:
         default: all
 
 jobs:
-  deploy-example-agent:
-    name: Deploy Example Agent VS
+  deploy-personal-aissistant:
+    name: Deploy Personal AIssistant VS
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -76,12 +76,12 @@ jobs:
           NAMESPACE="${CHART_NAMESPACE}"
 
           # VS Agent DB secret
-          VSAGENT_DB_PWD="${{ secrets.EXAMPLE_AGENT_VSAGENT_DB_PASSWORD }}"
+          VSAGENT_DB_PWD="${{ secrets.PERSONAL_AISSISTANT_VSAGENT_DB_PASSWORD }}"
           if [ -z "$VSAGENT_DB_PWD" ]; then
             VSAGENT_DB_PWD="$(openssl rand -hex 16)"
             echo "::warning::EXAMPLE_AGENT_VSAGENT_DB_PASSWORD secret not set — using generated password"
           fi
-          kubectl create secret generic example-agent-db-secret \
+          kubectl create secret generic personal-aissistant-db-secret \
             --namespace "$NAMESPACE" \
             --from-literal=POSTGRES_PASSWORD="$VSAGENT_DB_PWD" \
             --dry-run=client -o yaml | kubectl apply -f -
@@ -89,7 +89,7 @@ jobs:
       - name: Create agent pack ConfigMap
         if: inputs.step == 'deploy' || inputs.step == 'all'
         run: |
-          kubectl create configmap example-agent-agent-pack \
+          kubectl create configmap personal-aissistant-agent-pack \
             --namespace "$CHART_NAMESPACE" \
             --from-file=agent-pack.yaml=agent-pack.yaml \
             --dry-run=client -o yaml | kubectl apply -f -
@@ -106,38 +106,38 @@ jobs:
 
           helm upgrade --install "$RELEASE_NAME" "$CHART_SOURCE" \
             --version "$CHART_VERSION" \
-            --namespace "$CHART_NAMESPACE" --create-namespace \
+            --namespace "$CHART_NAMESPACE" \
             --values /tmp/helm-values.yaml \
-            --set chatbot.secret.OPENAI_API_KEY="${{ secrets.EXAMPLE_AGENT_OPENAI_API_KEY }}" \
-            --set chatbot.secret.MCP_CONFIG_ENCRYPTION_KEY="${{ secrets.EXAMPLE_AGENT_MCP_CONFIG_ENCRYPTION_KEY }}" \
-            --set chatbot.secret.POSTGRES_PASSWORD="${{ secrets.EXAMPLE_AGENT_POSTGRES_PASSWORD }}" \
-            --set postgres.secret.POSTGRES_PASSWORD="${{ secrets.EXAMPLE_AGENT_POSTGRES_PASSWORD }}" \
+            --set chatbot.secret.OPENAI_API_KEY="${{ secrets.PERSONAL_AISSISTANT_OPENAI_API_KEY }}" \
+            --set chatbot.secret.MCP_CONFIG_ENCRYPTION_KEY="${{ secrets.PERSONAL_AISSISTANT_MCP_CONFIG_ENCRYPTION_KEY }}" \
+            --set chatbot.secret.POSTGRES_PASSWORD="${{ secrets.PERSONAL_AISSISTANT_POSTGRES_PASSWORD }}" \
+            --set postgres.secret.POSTGRES_PASSWORD="${{ secrets.PERSONAL_AISSISTANT_POSTGRES_PASSWORD }}" \
             --set vs-agent-chart.extraEnv[0].name=AGENT_WALLET_ID \
-            --set vs-agent-chart.extraEnv[0].value="Example Agent" \
+            --set vs-agent-chart.extraEnv[0].value="Personal AIssistant" \
             --set vs-agent-chart.extraEnv[1].name=AGENT_WALLET_KEY \
-            --set vs-agent-chart.extraEnv[1].value="${{ secrets.EXAMPLE_AGENT_WALLET_KEY }}" \
+            --set vs-agent-chart.extraEnv[1].value="${{ secrets.PERSONAL_AISSISTANT_WALLET_KEY }}" \
             --wait --timeout 300s
 
       - name: Restart chatbot to pick up ConfigMap changes
         if: inputs.step == 'deploy' || inputs.step == 'all'
         run: |
-          kubectl rollout restart statefulset/example-agent-chart-chatbot -n "$CHART_NAMESPACE"
-          kubectl rollout status statefulset/example-agent-chart-chatbot -n "$CHART_NAMESPACE" --timeout=120s
+          kubectl rollout restart statefulset/personal-aissistant-chatbot -n "$CHART_NAMESPACE"
+          kubectl rollout status statefulset/personal-aissistant-chatbot -n "$CHART_NAMESPACE" --timeout=120s
 
       # -----------------------------------------------------------------------
       # GET-CREDENTIALS: Obtain Service credential from eafit-challenge organization
       # -----------------------------------------------------------------------
-      - name: Port-forward Example Agent VS Agent
+      - name: Port-forward Personal AIssistant VS Agent
         if: inputs.step == 'get-credentials' || inputs.step == 'all'
         run: |
-          kubectl port-forward -n "$CHART_NAMESPACE" "svc/example-agent" 3002:3000 &
+          kubectl port-forward -n "$CHART_NAMESPACE" "svc/personal-aissistant" 3002:3000 &
           echo "CHILD_PF_PID=$!" >> "$GITHUB_ENV"
           sleep 5
           curl -sf http://localhost:3002/v1/agent > /dev/null || {
-            echo "::error::Port-forward to Example Agent VS-Agent failed"
+            echo "::error::Port-forward to Personal AIssistant VS-Agent failed"
             exit 1
           }
-          echo "Port-forward to Example Agent VS-Agent on :3002"
+          echo "Port-forward to Personal AIssistant VS-Agent on :3002"
 
       - name: Port-forward organization Agent
         if: inputs.step == 'get-credentials' || inputs.step == 'all'
@@ -160,7 +160,7 @@ jobs:
           set_network_vars "$NETWORK"
 
           CHILD_DID=$(curl -sf "${CHILD_ADMIN_API}/v1/agent" | jq -r '.publicDid')
-          echo "Example Agent DID: $CHILD_DID"
+          echo "Personal AIssistant DID: $CHILD_DID"
 
           CHILD_PUBLIC_URL="${AGENT_PUBLIC_URL}"
           if has_linked_vp "$CHILD_PUBLIC_URL" "service"; then
@@ -197,8 +197,8 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## Example Agent VS" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Personal AIssistant VS" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **VS Agent:** https://example-agent.eafit.testnet.verana.network/.well-known/did.json" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **VS Agent:** https://personal-aissistant.agents.team-f.teams.eafit.testnet.verana.network/.well-known/did.json" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Network:** testnet" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Chart:** ${CHART_SOURCE:-}:${CHART_VERSION:-}" >> "$GITHUB_STEP_SUMMARY"

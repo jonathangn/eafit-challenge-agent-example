@@ -1,4 +1,4 @@
-# Example Agent VS — Helm chart values
+# Personal AIssistant — Helm chart values
 #
 # Uses hologram-generic-ai-agent-chart which bundles:
 #   - Chatbot (with agent pack, LLM, RAG, MCP)
@@ -13,7 +13,7 @@ chartVersion: v1.11.2
 global:
   domain: eafit.testnet.verana.network
 
-nameOverride: 'example-agent-chart'
+nameOverride: 'personal-aissistant'
 
 # Credential definition ID for user authentication (injected from config.env by workflow)
 credentialDefinitionId: ''
@@ -51,8 +51,8 @@ postgres:
       value: '/var/lib/postgresql/data/pgdata'
   secret:
     POSTGRES_PASSWORD: 'placeholder'
-    POSTGRES_USER: 'example_agent_db'
-    POSTGRES_DB: 'example-agent'
+    POSTGRES_USER: 'personal_aissistant_db'
+    POSTGRES_DB: 'personal-aissistant'
   resources:
     requests:
       cpu: '100m'
@@ -84,13 +84,15 @@ chatbot:
     - name: LOG_LEVEL
       value: '3'
     - name: LLM_PROVIDER
-      value: 'openai'
+      value: 'openrouter'
     - name: OPENAI_MODEL
-      value: 'gpt-5.4-mini'
+      value: 'google/gemma-3-4b-it:free'
+    - name: OPENAI_BASE_URL
+      value: 'https://openrouter.ai/api/v1'
     - name: VECTOR_STORE
       value: 'redis'
     - name: VECTOR_INDEX_NAME
-      value: 'example_agent'
+      value: 'personal-aissistant'
     - name: RAG_PROVIDER
       value: 'langchain'
     - name: RAG_DOCS_PATH
@@ -100,25 +102,25 @@ chatbot:
     - name: AGENT_MEMORY_WINDOW
       value: '20'
     - name: REDIS_URL
-      value: 'redis://example-agent-chart-redis.{{ .Release.Namespace }}:6379'
+      value: 'redis://personal-aissistant-redis.{{ .Release.Namespace }}:6379'
     - name: VS_AGENT_ADMIN_URL
-      value: 'http://example-agent.{{ .Release.Namespace }}:3000'
+      value: 'http://personal-aissistant.{{ .Release.Namespace }}:3000'
     - name: POSTGRES_HOST
-      value: 'example-agent-chart-postgres.{{ .Release.Namespace }}'
+      value: 'personal-aissistant-postgres.{{ .Release.Namespace }}'
     - name: CREDENTIAL_DEFINITION_ID
       value: '{{ .Values.credentialDefinitionId | default "" }}'
     - name: GITHUB_MCP_URL
       value: 'https://api.githubcopilot.com/mcp/'
   agentPack:
     enabled: true
-    name: example-agent
-    mountPath: /app/agent-packs/example-agent
+    name: personal-aissistant
+    mountPath: /app/agent-packs/personal-aissistant
     fileName: agent-pack.yaml
-    existingConfigMap: 'example-agent-agent-pack'
+    existingConfigMap: 'personal-aissistant-agent-pack'
   secret:
     POSTGRES_PASSWORD: 'placeholder'
-    POSTGRES_USER: 'example_agent_db'
-    POSTGRES_DB_NAME: 'example-agent'
+    POSTGRES_USER: 'personal_aissistant_db'
+    POSTGRES_DB_NAME: 'personal-aissistant'
   service:
     type: ClusterIP
     port: 3003
@@ -139,13 +141,13 @@ artemis:
 # === VS Agent ===
 vs-agent-chart:
   enabled: true
-  name: example-agent
-  didcommLabel: 'Example Agent'
+  name: personal-aissistant
+  didcommLabel: 'Personal AIssistant'
   didcommInvitationImageUrl: 'https://hologram.zone/images/github.svg'
-  eventsBaseUrl: http://example-agent-chart-chatbot:3003
+  eventsBaseUrl: http://personal-aissistant-chatbot:3003
   ingress:
-    host: "example-agent.{{ .Values.global.domain }}"
-    tlsSecret: "example-agent.{{ .Values.global.domain }}-cert"
+    host: "personal-aissistant.agents.team-f.teams.eafit.testnet.verana.network"
+    tlsSecret: "personal-aissistant.agents.team-f.teams.eafit.testnet.verana.network-cert"
     public:
       enableCors: true
     private:
@@ -153,11 +155,11 @@ vs-agent-chart:
       host: ""
   extraEnv:
     - name: AGENT_WALLET_ID
-      value: "Example Agent"
+      value: "Personal AIssistant"
     - name: USE_CORS
       value: "true"
     - name: REDIS_HOST
-      value: "example-agent-chart-redis"
+      value: "personal-aissistant-redis"
     - name: AGENT_LOG_LEVEL
       value: "3"
     - name: SELF_ISSUED_VTC_ORG_TYPE
@@ -169,6 +171,6 @@ vs-agent-chart:
     - name: SELF_ISSUED_VTC_SERVICE_TYPE
       value: "AI Agent"
     - name: SELF_ISSUED_VTC_SERVICE_DESCRIPTION
-      value: "Example AI agent for the EAFIT Challenge"
+      value: "Personal AIssistant for the EAFIT Challenge"
     - name: SELF_ISSUED_VTC_SERVICE_MINIMUMAGEREQUIRED
       value: "1"

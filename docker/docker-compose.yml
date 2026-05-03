@@ -1,8 +1,8 @@
 # =============================================================================
-# Example Agent VS — Local Docker Compose
+# Personal AIssistant — Local Docker Compose
 # =============================================================================
 #
-# Runs the Example Agent support services locally:
+# Runs the Personal AIssistant support services locally:
 #   - Chatbot (hologram-generic-ai-agent)
 #   - Redis (vector store, memory, queues)
 #   - PostgreSQL (session persistence)
@@ -24,18 +24,14 @@
 services:
   redis:
     image: redis/redis-stack-server:latest
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
 
   postgres:
     image: postgres:16-alpine
-    ports:
-      - "5432:5432"
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-example-agent}
-      - POSTGRES_USER=${POSTGRES_USER:-example_agent_db}
+      - POSTGRES_DB=${POSTGRES_DB:-personal-aissistant}
+      - POSTGRES_USER=${POSTGRES_USER:-personal_aiassistant_db}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
@@ -48,13 +44,14 @@ services:
       - "${CHATBOT_PORT:-3003}:${CHATBOT_PORT:-3003}"
     environment:
       - APP_PORT=${CHATBOT_PORT:-3003}
-      - AGENT_PACK_PATH=/app/agent-packs/example-agent
+      - AGENT_PACK_PATH=/app/agent-packs/personal-aissistant
       - LOG_LEVEL=3
-      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openrouter}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.4-mini}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
       - VECTOR_STORE=redis
-      - VECTOR_INDEX_NAME=example_agent
+      - VECTOR_INDEX_NAME=personal-aissistant
       - RAG_PROVIDER=langchain
       - RAG_DOCS_PATH=/app/rag/docs
       - AGENT_MEMORY_BACKEND=redis
@@ -62,15 +59,15 @@ services:
       - REDIS_URL=redis://redis:6379
       - VS_AGENT_ADMIN_URL=http://host.docker.internal:${VS_AGENT_ADMIN_PORT:-3010}
       - POSTGRES_HOST=postgres
-      - POSTGRES_USER=${POSTGRES_USER:-example_agent_db}
+      - POSTGRES_USER=${POSTGRES_USER:-personal_aiassistant_db}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
-      - POSTGRES_DB_NAME=${POSTGRES_DB:-example-agent}
+      - POSTGRES_DB_NAME=${POSTGRES_DB:-personal-aissistant}
       - CREDENTIAL_DEFINITION_ID=${CREDENTIAL_DEFINITION_ID}
       - GITHUB_MCP_URL=${GITHUB_MCP_URL:-https://api.githubcopilot.com/mcp/}
       - MCP_CONFIG_ENCRYPTION_KEY=${MCP_CONFIG_ENCRYPTION_KEY:-}
     volumes:
       - chatbot-data:/app/data
-      - ../agent-pack.yaml:/app/agent-packs/example-agent/agent-pack.yaml:ro
+      - ../agent-pack.yaml:/app/agent-packs/personal-aissistant/agent-pack.yaml:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

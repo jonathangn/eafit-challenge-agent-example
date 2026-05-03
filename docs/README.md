@@ -1,71 +1,112 @@
-# Example Agent — User Guide
+# EAFIT Challenge — Example Agent
 
-Welcome to the **Example Agent**, an AI-powered GitHub assistant deployed as part of the [EAFIT Challenge](https://github.com/verana-labs/eafit-challenge) on the Verana ecosystem.
+An example AI agent with GitHub MCP integration, deployed as a Verifiable Service on the [Verana](https://verana.io) ecosystem. This is part of the [EAFIT Challenge](https://github.com/verana-labs/eafit-challenge).
 
-## Getting Started
+## Architecture
 
-### 1. Install Hologram Messaging
+This example agent is built with the [hologram-generic-ai-agent-vs](https://github.com/2060-io/hologram-generic-ai-agent-vs) container, which provides a ready-to-use AI chatbot with DIDComm messaging, verifiable credential authentication, and MCP tool integration.
 
-Download the Hologram Messaging app and create your account.
+You can find other agent examples (GitHub Agent, Wise Agent, etc.) in the [hologram-verifiable-services](https://github.com/2060-io/hologram-verifiable-services) repository.
 
-### 2. Get Your Credential
+This agent is a **child service** of the EAFIT Challenge organization. It:
 
-Connect to the **Avatar** service at `avatar.eafit.testnet.verana.network` first. It will issue you a verifiable credential (AnonCreds) that proves your identity. You need this credential to authenticate with the Example Agent.
+1. Receives a **Service credential** from the organization (proves it's a legitimate service)
+2. Uses the **Avatar credential definition** from `avatar.eafit.testnet.verana.network` to authenticate users via AnonCreds proof requests
+3. Provides GitHub MCP tools to authenticated users via encrypted DIDComm chat
 
-### 3. Connect to the Example Agent
+## Repository Structure
 
-Scan the Example Agent's QR code or tap its invitation link. The agent will greet you and ask you to authenticate.
+```
+├── config.env              # Service configuration (ports, org URLs, credDef, etc.)
+├── deployment.yaml         # Helm chart values for K8s deployment
+├── agent-pack.yaml         # Chatbot agent pack (prompts, menus, MCP config)
+├── common/
+│   └── common.sh           # Shared shell helpers
+├── docker/
+│   └── docker-compose.yml  # Local development stack
+├── scripts/
+│   ├── setup.sh            # Local setup (VS Agent + ngrok + Service credential)
+│   └── start.sh            # Start Docker Compose stack
+├── docs/
+│   └── README.md           # User-facing guide
+└── .github/
+    └── workflows/
+        └── deploy.yml      # GitHub Actions workflow for K8s deployment
+```
 
-### 4. Authenticate
+## Local Development
 
-Open the contextual menu (hamburger icon) and tap **Authenticate**. The agent will request your verifiable credential. Accept the proof request to complete authentication.
+### Prerequisites
 
-### 5. Configure Your GitHub Token
+- Docker and Docker Compose
+- [ngrok](https://ngrok.com/) (authenticated)
+- `curl`, `jq`
+- An OpenAI API key (or other LLM provider)
+- [Hologram Messaging](https://hologram.zone) on your phone
+- An **EAFIT Avatar credential** (see below)
 
-After authenticating, open the contextual menu and select **MCP Server Config**. The agent will ask you to enter your **GitHub Personal Access Token**.
+The setup script connects to the deployed EAFIT organization at `admin.organization.eafit.testnet.verana.network` to obtain the Service credential. No local organization instance is required.
 
-To create a token:
-1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
-2. Click **Generate new token (classic)** or use a **Fine-grained token**
-3. Select the scopes you need (e.g. `repo`, `read:org`, `read:user`)
-4. Copy the token and paste it into the chat
+### Get your EAFIT Avatar Credential
 
-The agent will verify the token works and confirm the configuration.
+The chatbot uses **credential-based authentication** — you need an EAFIT Avatar credential to test your agent.
 
-## What Can the Example Agent Do?
+1. Open **Hologram Messaging** on your phone
+2. Navigate to https://avatar.eafit.testnet.verana.network/
+3. Scan the QR code and follow the prompts to obtain your credential
 
-Once configured, you can ask the agent to:
+You can verify it works by connecting to the deployed example agent at https://example-agent.eafit.testnet.verana.network/ — scan the QR code, authenticate with your credential, and chat with the bot.
 
-- **Search repositories** — "Find Python machine learning repos with more than 1000 stars"
-- **Browse issues** — "Show me open issues in my-org/my-repo"
-- **List pull requests** — "What PRs are open in my-org/my-repo?"
-- **Read file contents** — "Show me the README of my-org/my-repo"
-- **Explore code** — "Search for usages of `useState` in my-org/frontend"
-- **Get commit history** — "Show recent commits on main in my-org/my-repo"
-- **View user profiles** — "Who is octocat on GitHub?"
-- **List branches and tags** — "What branches exist in my-org/my-repo?"
+### Quick Start
 
-Just type your request in natural language — the agent will figure out which GitHub API to call.
+```bash
+# 1. Set up the VS Agent (deploys container, gets Service credential)
 
-## Tips
+set -a
+source config.env
+set +a
+./scripts/setup.sh
 
-- **Be specific**: "Show open issues labeled `bug` in my-org/my-repo" works better than "show bugs"
-- **Use natural language**: No need to remember API syntax — just describe what you want
-- **Multi-language**: The agent responds in your language (English, Spanish)
-- **Token security**: Your GitHub token is stored encrypted and is never shared with other users
+# 2. Start the chatbot stack (chatbot + redis + postgres)
+export MCP_CONFIG_ENCRYPTION_KEY=$(openssl rand -hex 32)
+export OPENAI_API_KEY=sk-...
+./scripts/start.sh
+```
 
-## Troubleshooting
+> Note: if you don't want to use an OPENAI_API_KEY, you can configure any other LLM, refer to [agent pack schema](https://github.com/2060-io/hologram-generic-ai-agent-vs/blob/main/docs/agent-pack-schema.md) for available options.
 
-| Problem | Solution |
-|---------|----------|
-| Agent says "Authentication required" | Open the menu and tap **Authenticate** |
-| Agent says token is invalid | Regenerate your GitHub token and reconfigure via **MCP Server Config** |
-| Agent can't find a repo | Make sure your token has access to that repository |
-| Agent is unresponsive | Try sending "hello" or reconnect from Hologram Messaging |
+## Kubernetes Deployment (GitHub Actions)
 
-## Privacy & Security
+The `.github/workflows/deploy.yml` workflow deploys the agent to the shared EAFIT Challenge K8s cluster.
 
-- All communication is end-to-end encrypted via DIDComm
-- Your GitHub token is stored per-user and encrypted at rest
-- The agent only accesses GitHub on your behalf — no data is shared between users
-- Your identity is verified through the Verana ecosystem's verifiable credentials
+### Required GitHub Secrets
+
+| Secret | Description |
+| ------ | ----------- |
+| `OVH_KUBECONFIG` | Kubeconfig for the K8s cluster |
+| `K8S_NAMESPACE` | Target namespace (ideally, use your team name) |
+| `EXAMPLE_AGENT_OPENAI_API_KEY` | OpenAI API key for the chatbot |
+| `EXAMPLE_AGENT_POSTGRES_PASSWORD` | PostgreSQL password |
+| `EXAMPLE_AGENT_MCP_CONFIG_ENCRYPTION_KEY` | Encryption key for MCP user configs (generate with `openssl rand -hex 32`) |
+| `EXAMPLE_AGENT_WALLET_KEY` | VS Agent wallet encryption key (generate with `openssl rand -base64 32`) |
+| `EXAMPLE_AGENT_VSAGENT_DB_PASSWORD` | VS Agent internal DB password |
+
+### Deployment
+
+Run the workflow from the GitHub Actions tab with step `all` to deploy and obtain credentials.
+
+The agent will be available at the URL configured in `AGENT_PUBLIC_URL` (see below).
+
+## Configuration
+
+Key settings in `config.env`:
+
+- **`AGENT_PUBLIC_URL`** — Public URL of the deployed agent. For student teams, use the convention: `https://<agentname>.agents.<team_name>.teams.eafit.testnet.verana.network`
+- **`CREDENTIAL_DEFINITION_ID`** — AnonCreds credDef from the EAFIT Avatar service (hardcoded)
+- **`ORG_VS_PUBLIC_URL`** — Public URL of the EAFIT organization agent
+- **`SERVICE_NAME`** — Display name shown in the Service credential
+- **`OPENAI_MODEL`** — LLM model for the chatbot
+
+## License
+
+Apache-2.0

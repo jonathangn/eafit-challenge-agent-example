@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Start the Example Agent stack locally via Docker Compose
+# Start the Personal AIssistant stack locally via Docker Compose
 # =============================================================================
 #
 # Prerequisites:
-#   - Example Agent VS Agent running (setup.sh completed)
+#   - Personal AIssistant VS Agent running (setup.sh completed)
 #   - config.env sourced
 #   - OPENAI_API_KEY set in environment
 #   - NGROK_DOMAIN set in environment
@@ -29,7 +29,7 @@ source "$REPO_ROOT/config.env"
 set +a
 
 echo "============================================="
-echo " Example Agent VS — Local Start"
+echo " Personal AIssistant — Local Start"
 echo "============================================="
 echo "  VS Agent image  : ${VS_AGENT_IMAGE}"
 echo "  Chatbot image   : ${CHATBOT_IMAGE}"
@@ -47,4 +47,5 @@ if [ -z "${NGROK_DOMAIN:-}" ]; then
 fi
 
 echo "Starting Docker Compose stack..."
-docker compose -f "$REPO_ROOT/docker/docker-compose.yml" up "$@"
+cd "$REPO_ROOT/docker" && docker compose down -v 2>/dev/null || true
+docker compose up -d

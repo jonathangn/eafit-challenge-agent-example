@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Example Agent VS — Local Setup
+# Personal AIssistant — Local Setup
 # =============================================================================
 #
-# This script sets up the Example Agent VS locally:
+# This script sets up the Personal AIssistant locally:
 #   1. Deploys the VS Agent via Docker + ngrok
 #   2. Sets up the veranad CLI account
 #   3. Obtains a Service credential from the eafit-challenge organization
@@ -38,11 +38,11 @@ source "${REPO_ROOT}/common/common.sh"
 
 NETWORK="${NETWORK:-testnet}"
 VS_AGENT_IMAGE="${VS_AGENT_IMAGE:-veranalabs/vs-agent:latest}"
-VS_AGENT_CONTAINER_NAME="${VS_AGENT_CONTAINER_NAME:-example-agent}"
+VS_AGENT_CONTAINER_NAME="${VS_AGENT_CONTAINER_NAME:-personal-aissistant}"
 VS_AGENT_ADMIN_PORT="${VS_AGENT_ADMIN_PORT:-3010}"
 VS_AGENT_PUBLIC_PORT="${VS_AGENT_PUBLIC_PORT:-3011}"
 VS_AGENT_DATA_DIR="${VS_AGENT_DATA_DIR:-${REPO_ROOT}/data}"
-SERVICE_NAME="${SERVICE_NAME:-Example Agent}"
+SERVICE_NAME="${SERVICE_NAME:-Personal AIssistant}"
 USER_ACC="${USER_ACC:-org-vs-admin}"
 OUTPUT_FILE="${OUTPUT_FILE:-${REPO_ROOT}/ids.env}"
 
@@ -52,7 +52,7 @@ ORG_VS_PUBLIC_URL="${ORG_VS_PUBLIC_URL:-}"
 
 # Service details
 SERVICE_TYPE="${SERVICE_TYPE:-AIAgent}"
-SERVICE_DESCRIPTION="${SERVICE_DESCRIPTION:-Example AI agent for the EAFIT Challenge}"
+SERVICE_DESCRIPTION="${SERVICE_DESCRIPTION:-Personal AI Assistant for the EAFIT Challenge}"
 SERVICE_LOGO_URL="${SERVICE_LOGO_URL:-https://hologram.zone/images/github.svg}"
 SERVICE_MIN_AGE="${SERVICE_MIN_AGE:-0}"
 SERVICE_TERMS="${SERVICE_TERMS:-https://verana.io/terms}"
@@ -96,7 +96,7 @@ log "Step 1: Deploy VS Agent"
 
 # Clean up any previous instance
 docker rm -f "$VS_AGENT_CONTAINER_NAME" 2>/dev/null || true
-rm -rf "${VS_AGENT_DATA_DIR}/data/wallet"
+rm -rf "${VS_AGENT_DATA_DIR}/data/wallet" 2>/dev/null || true
 
 # Pull image
 log "Pulling VS Agent image..."
@@ -138,6 +138,7 @@ docker run --platform linux/amd64 -d \
   -e "ENABLE_PUBLIC_API_SWAGGER=true" \
   -e "EVENTS_BASE_URL=http://host.docker.internal:${CHATBOT_PORT:-3003}" \
   -e "USE_CORS=true" \
+  --add-host host.docker.internal:host-gateway \
   --name "$VS_AGENT_CONTAINER_NAME" \
   "$VS_AGENT_IMAGE"
 
@@ -195,16 +196,19 @@ else
   SERVICE_LOGO_DATA_URI=$(download_logo_data_uri "$SERVICE_LOGO_URL")
 
   # Build Service credential claims
+  _logo_tmp=$(mktemp)
+  printf '%s' "$SERVICE_LOGO_DATA_URI" > "$_logo_tmp"
   SERVICE_CLAIMS=$(jq -n \
     --arg id "$AGENT_DID" \
     --arg name "$SERVICE_NAME" \
     --arg type "$SERVICE_TYPE" \
     --arg desc "$SERVICE_DESCRIPTION" \
-    --arg logo "$SERVICE_LOGO_DATA_URI" \
+    --rawfile logo "$_logo_tmp" \
     --argjson age "$SERVICE_MIN_AGE" \
     --arg terms "$SERVICE_TERMS" \
     --arg privacy "$SERVICE_PRIVACY" \
     '{id: $id, name: $name, type: $type, description: $desc, logo: $logo, minimumAgeRequired: $age, termsAndConditions: $terms, privacyPolicy: $privacy}')
+  rm -f "$_logo_tmp"
 
   # Issue Service credential from organization, link on local agent
   issue_remote_and_link "$ORG_VS_ADMIN_URL" "$ADMIN_API" "service" "$SERVICE_JSC_URL" "$AGENT_DID" "$SERVICE_CLAIMS"
@@ -217,7 +221,7 @@ fi
 log "Saving resource IDs to ${OUTPUT_FILE}"
 
 cat > "$OUTPUT_FILE" <<EOF
-# Example Agent VS — Resource IDs
+# Personal AIssistant — Resource IDs
 # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # Network: ${NETWORK}
 
@@ -235,7 +239,7 @@ ok "IDs saved to ${OUTPUT_FILE}"
 # Summary
 # =============================================================================
 
-log "Example Agent VS setup complete!"
+log "Personal AIssistant setup complete!"
 echo ""
 echo "  Agent DID         : $AGENT_DID"
 echo "  Public URL        : $NGROK_URL"
