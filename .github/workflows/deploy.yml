@@ -62,13 +62,9 @@ jobs:
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v5
-        with:
-          version: 'v1.29.9'
 
       - name: Install Helm
         uses: azure/setup-helm@v5
-        with:
-          version: 'v3.14.0'
 
       # -----------------------------------------------------------------------
       # DEPLOY: Install/upgrade via Helm (hologram-generic-ai-agent-chart)
@@ -129,13 +125,25 @@ jobs:
 
       # -----------------------------------------------------------------------
       # GET-CREDENTIALS: Obtain Service credential from eafit-challenge organization
-      # Note: Using public URLs (no port-forward needed)
+      # Note: Using public URLs only (no port-forward to organization needed)
       # -----------------------------------------------------------------------
+      - name: Port-forward Personal AIssistant VS Agent
+        if: inputs.step == 'get-credentials' || inputs.step == 'all'
+        run: |
+          kubectl port-forward -n "$CHART_NAMESPACE" "svc/personal-aissistant" 3002:3000 &
+          echo "CHILD_PF_PID=$!" >> "$GITHUB_ENV"
+          sleep 5
+          curl -sf http://localhost:3002/v1/agent > /dev/null || {
+            echo "::error::Port-forward to Personal AIssistant VS-Agent failed"
+            exit 1
+          }
+          echo "Port-forward to Personal AIssistant VS-Agent on :3002"
+
       - name: Get Service credential
         if: inputs.step == 'get-credentials' || inputs.step == 'all'
         run: |
           ORG_ADMIN_API="https://admin.organization.eafit.testnet.verana.network"
-          CHILD_ADMIN_API="${AGENT_PUBLIC_URL}"
+          CHILD_ADMIN_API="http://localhost:3002"
           source common/common.sh
           set_network_vars "$NETWORK"
 
@@ -144,7 +152,7 @@ jobs:
 
           CHILD_PUBLIC_URL="${AGENT_PUBLIC_URL}"
           if has_linked_vp "$CHILD_PUBLIC_URL" "service"; then
-            echo "Service credential already linked — skipping"
+            ok "Service credential already linked — skipping"
           else
             SERVICE_VTJSC_OUTPUT=$(discover_ecs_vtjsc "$ECS_TR_PUBLIC_URL" "service")
             SERVICE_JSC_URL=$(echo "$SERVICE_VTJSC_OUTPUT" | sed -n '1p')
@@ -172,7 +180,6 @@ jobs:
         if: always()
         run: |
           [ -n "${CHILD_PF_PID:-}" ] && kill "$CHILD_PF_PID" 2>/dev/null || true
-          [ -n "${ORG_PF_PID:-}" ] && kill "$ORG_PF_PID" 2>/dev/null || true
 
       - name: Summary
         if: always()
