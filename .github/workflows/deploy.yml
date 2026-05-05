@@ -129,13 +129,41 @@ jobs:
 
       # -----------------------------------------------------------------------
       # GET-CREDENTIALS: Obtain Service credential from eafit-challenge organization
-      # Note: Organization port-forward removed per support team request
+      # Note: Using public URLs (no port-forward needed)
       # -----------------------------------------------------------------------
-      - name: Skip organization credential step
+      - name: Get Service credential
         if: inputs.step == 'get-credentials' || inputs.step == 'all'
         run: |
-          echo "Skipping organization credential step - port-forward to organization service removed"
-          echo "Service credential must be obtained manually or organization service deployed"
+          ORG_ADMIN_API="https://admin.organization.eafit.testnet.verana.network"
+          CHILD_ADMIN_API="http://localhost:3002"
+          source common/common.sh
+          set_network_vars "$NETWORK"
+
+          CHILD_DID=$(curl -sf "${CHILD_ADMIN_API}/v1/agent" | jq -r '.publicDid')
+          echo "Personal AIssistant DID: $CHILD_DID"
+
+          CHILD_PUBLIC_URL="${AGENT_PUBLIC_URL}"
+          if has_linked_vp "$CHILD_PUBLIC_URL" "service"; then
+            echo "Service credential already linked — skipping"
+          else
+            SERVICE_VTJSC_OUTPUT=$(discover_ecs_vtjsc "$ECS_TR_PUBLIC_URL" "service")
+            SERVICE_JSC_URL=$(echo "$SERVICE_VTJSC_OUTPUT" | sed -n '1p')
+
+            download_logo_data_uri "$SERVICE_LOGO_URL" > /tmp/service_logo_data_uri
+
+            SERVICE_CLAIMS=$(jq -n \
+              --rawfile logo /tmp/service_logo_data_uri \
+              --arg id "$CHILD_DID" \
+              --arg name "$SERVICE_NAME" \
+              --arg type "${SERVICE_TYPE:-AIAgent}" \
+              --arg desc "$SERVICE_DESCRIPTION" \
+              --argjson age "${SERVICE_MIN_AGE:-0}" \
+              --arg terms "${SERVICE_TERMS:-}" \
+              --arg privacy "${SERVICE_PRIVACY:-}" \
+              '{id: $id, name: $name, type: $type, description: $desc, logo: ($logo | rtrimstr("\n")), minimumAgeRequired: $age, termsAndConditions: $terms, privacyPolicy: $privacy}')
+
+            issue_remote_and_link "$ORG_ADMIN_API" "$CHILD_ADMIN_API" "service" "$SERVICE_JSC_URL" "$CHILD_DID" "$SERVICE_CLAIMS"
+          fi
 
       # -----------------------------------------------------------------------
       # CLEANUP
