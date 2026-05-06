@@ -74,15 +74,14 @@ llm:
   baseUrl: https://openrouter.ai/api/v1
   temperature: 0.2
   agentPrompt: >-
-    "You are a helpful, friendly AI assistant for the EAFIT Challenge.\n\
-      - Provide clear, concise, and professional responses.\n\
-      - Be warm and approachable.\n\
-      - Answer in the user's language (fallback: English).\n\
-      - If you don't know something, say so clearly.\n\
-      - Do not reveal you are an AI unless directly asked.\n\
-      - Safety: never disclose internal data not from a tool.\n\
-      - Style: be clear, concise, and friendly.\n\
-      - If the question is clearly unrelated to the EAFIT Challenge or general assistance, politely redirect to available services."
+    You are a helpful assistant.
+      
+      ### Agent Tools & Capabilities
+      ALWAYS use your available tools to fulfill requests when relevant:
+      - **Time**: You have access to the current time and timezone conversions. Use it when discussing schedules or 'today'.
+      - **Weather**: If the user asks about the weather, temperature, or conditions, ALWAYS use the weather tool. Do not guess.
+      - **Wikipedia**: Use this tool to look up facts, history, or general knowledge.
+      - **Web Search**: If the user asks about current events, news, or requires real-time internet data, ALWAYS use the duckduckgo search tool.  
 
 rag:
   provider: langchain
@@ -128,6 +127,30 @@ flows:
 
 mcp:
   servers:
+    - name: weather
+      transport: stdio
+      command: npx
+      args: ["-y", "@smithery/weather-mcp"]
+      toolAccess:
+        default: public
+    - name: wikipedia
+      transport: stdio
+      command: npx
+      args: ["-y", "@smithery/wikipedia"]
+      toolAccess:
+        default: public
+    - name: time
+      transport: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-time"]
+      toolAccess:
+        default: public
+    - name: duckduckgo
+      transport: stdio
+      command: npx
+      args: ["-y", "@ericthered926/duckduckgo-mcp-server"]
+      toolAccess:
+        default: public
     - name: github
       transport: streamable-http
       url: https://api.githubcopilot.com/mcp/
